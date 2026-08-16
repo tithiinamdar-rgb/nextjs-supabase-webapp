@@ -1,0 +1,315 @@
+'use client';
+
+import React, { useState } from 'react';
+import { usePartnerStore } from '@/lib/store/partnerStore';
+import { 
+  LayoutDashboard, 
+  IndianRupee, 
+  Layers, 
+  FileText, 
+  CheckSquare, 
+  Search, 
+  Settings, 
+  Plus, 
+  Bell, 
+  LogOut, 
+  Building2, 
+  ShieldCheck, 
+  ChevronDown,
+  UserCheck,
+  Sparkles
+} from 'lucide-react';
+import { NavigationSection } from '@/types';
+
+// Modals
+import QuickAddModal from '@/components/modals/QuickAddModal';
+import GlobalSearchModal from '@/components/modals/GlobalSearchModal';
+import RecordPaymentModal from '@/components/modals/RecordPaymentModal';
+import NotificationsDrawer from '@/components/notifications/NotificationsDrawer';
+import PartnerAuthModal from '@/components/auth/PartnerAuthModal';
+
+// Views
+import MainDashboard from '@/components/dashboard/MainDashboard';
+import PaymentsView from '@/components/payments/PaymentsView';
+import ChitsView from '@/components/chits/ChitsView';
+import NotesView from '@/components/notes/NotesView';
+import TasksView from '@/components/tasks/TasksView';
+import SettingsView from '@/components/settings/SettingsView';
+
+export default function AppShell() {
+  const { 
+    currentSection, 
+    setCurrentSection, 
+    activePartner, 
+    setActivePartner,
+    partners, 
+    openQuickAdd, 
+    setIsGlobalSearchOpen,
+    setIsNotificationsOpen,
+    unreadNotificationsCount 
+  } = usePartnerStore();
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isPartnerMenuOpen, setIsPartnerMenuOpen] = useState(false);
+
+  const navItems: { id: NavigationSection; label: string; icon: React.ElementType }[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'payments', label: 'Payments', icon: IndianRupee },
+    { id: 'chits', label: 'Chits', icon: Layers },
+    { id: 'notes', label: 'Notes & Deals', icon: FileText },
+    { id: 'tasks', label: 'Daily To-Do', icon: CheckSquare },
+    { id: 'settings', label: 'Settings', icon: Settings },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col md:flex-row antialiased">
+      {/* DESKTOP SIDEBAR NAVIGATION */}
+      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 p-5 justify-between flex-shrink-0 min-h-screen sticky top-0 shadow-[1px_0_3px_rgba(0,0,0,0.02)]">
+        <div className="space-y-6">
+          {/* Brand Logo */}
+          <div className="flex items-center gap-3 px-1">
+            <div className="w-10 h-10 rounded-xl bg-slate-900 text-amber-400 p-2 shadow-sm flex items-center justify-center font-bold">
+              <Building2 className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <h2 className="font-bold text-slate-900 text-base tracking-tight leading-tight">
+                Partner Desk
+              </h2>
+              <p className="text-[11px] text-amber-700 font-semibold tracking-wide">
+                Real Estate Workspace
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Add Button */}
+          <button
+            onClick={() => openQuickAdd()}
+            className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition-all shadow-sm flex items-center justify-center gap-2 group cursor-pointer"
+          >
+            <Plus className="w-4 h-4 text-amber-400 stroke-[2.5] group-hover:rotate-90 transition-transform" />
+            <span>+ Add Record</span>
+          </button>
+
+          {/* Navigation Links */}
+          <nav className="space-y-1">
+            {navItems.map(item => {
+              const Icon = item.icon;
+              const isActive = currentSection === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setCurrentSection(item.id)}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-slate-100 text-slate-950 font-semibold shadow-xs'
+                      : 'text-slate-600 hover:text-slate-950 hover:bg-slate-50'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-slate-900' : 'text-slate-400'}`} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+
+            <button
+              onClick={() => setIsGlobalSearchOpen(true)}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-950 hover:bg-slate-50 transition-all cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <Search className="w-4 h-4 text-slate-400" />
+                <span>Search</span>
+              </div>
+              <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono text-slate-500">
+                Ctrl+K
+              </kbd>
+            </button>
+          </nav>
+        </div>
+
+        {/* User Profile Card & Switcher */}
+        <div className="pt-4 border-t border-slate-100 space-y-2">
+          <div className="relative">
+            <button
+              onClick={() => setIsPartnerMenuOpen(prev => !prev)}
+              className="w-full p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 flex items-center justify-between transition-all cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <div className="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs flex items-center justify-center flex-shrink-0 shadow-xs">
+                  {activePartner.initials}
+                </div>
+                <div className="text-left truncate">
+                  <span className="text-xs font-bold text-slate-900 block truncate">{activePartner.name}</span>
+                  <span className="text-[10px] text-slate-500 font-medium block">{activePartner.role}</span>
+                </div>
+              </div>
+              <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+            </button>
+
+            {/* Partner Switcher Dropdown */}
+            {isPartnerMenuOpen && (
+              <div className="absolute bottom-full mb-2 left-0 w-full bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 space-y-1 animate-fadeIn z-50">
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold px-2 py-1 block">
+                  Switch Partner Account
+                </span>
+                {partners.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setActivePartner(p);
+                      setIsPartnerMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between p-2 rounded-lg text-xs transition-colors cursor-pointer ${
+                      activePartner.id === p.id 
+                        ? 'bg-slate-100 text-slate-900 font-semibold' 
+                        : 'text-slate-600 hover:text-slate-950 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>{p.name} ({p.role})</span>
+                    {activePartner.id === p.id && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => setIsAuthModalOpen(true)}
+            className="w-full flex items-center justify-center gap-2 py-1.5 rounded-lg text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Switch / Lock Account</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* MAIN VIEW AREA */}
+      <main className="flex-1 flex flex-col min-w-0 min-h-screen">
+        {/* Top Header Bar */}
+        <header className="h-16 px-6 border-b border-slate-200 bg-white/90 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="md:hidden flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-amber-400 flex items-center justify-center font-bold text-xs">
+                PD
+              </div>
+              <span className="font-bold text-slate-900 text-sm">Partner Desk</span>
+            </div>
+
+            <div className="hidden md:flex items-center gap-2 text-xs text-slate-500">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>Private Business Workspace</span>
+              <span>•</span>
+              <span className="text-slate-800 font-medium">Logged in: {activePartner.name}</span>
+            </div>
+          </div>
+
+          {/* Right Header Controls */}
+          <div className="flex items-center gap-2.5">
+            {/* Universal Search trigger */}
+            <button
+              onClick={() => setIsGlobalSearchOpen(true)}
+              className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 transition-colors cursor-pointer"
+              title="Search (Ctrl+K)"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+
+            {/* Notifications Bell with unread badge */}
+            <button
+              onClick={() => setIsNotificationsOpen(true)}
+              className="relative p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 transition-colors cursor-pointer"
+              title="Notifications & Reminders"
+            >
+              <Bell className="w-4 h-4" />
+              {unreadNotificationsCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-slate-950 font-bold text-[9px] flex items-center justify-center shadow-xs">
+                  {unreadNotificationsCount}
+                </span>
+              )}
+            </button>
+
+            {/* Quick Add mobile/desktop button */}
+            <button
+              onClick={() => openQuickAdd()}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 text-amber-400 stroke-[2.5]" />
+              <span className="hidden sm:inline">+ Add</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Content View Container */}
+        <div className="p-4 md:p-8 flex-1 max-w-7xl w-full mx-auto">
+          {currentSection === 'dashboard' && <MainDashboard />}
+          {currentSection === 'payments' && <PaymentsView />}
+          {currentSection === 'chits' && <ChitsView />}
+          {currentSection === 'notes' && <NotesView />}
+          {currentSection === 'tasks' && <TasksView />}
+          {currentSection === 'settings' && <SettingsView />}
+        </div>
+      </main>
+
+      {/* MOBILE BOTTOM NAVIGATION BAR */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-4 py-2 flex items-center justify-around shadow-lg">
+        <button
+          onClick={() => setCurrentSection('dashboard')}
+          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-lg text-[10px] font-medium transition-colors ${
+            currentSection === 'dashboard' ? 'text-slate-950 font-bold' : 'text-slate-500'
+          }`}
+        >
+          <LayoutDashboard className="w-4 h-4" />
+          <span>Home</span>
+        </button>
+
+        <button
+          onClick={() => setCurrentSection('payments')}
+          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-lg text-[10px] font-medium transition-colors ${
+            currentSection === 'payments' ? 'text-slate-950 font-bold' : 'text-slate-500'
+          }`}
+        >
+          <IndianRupee className="w-4 h-4" />
+          <span>Payments</span>
+        </button>
+
+        {/* Floating Center + Add Button */}
+        <button
+          onClick={() => openQuickAdd()}
+          className="w-11 h-11 -mt-5 rounded-full bg-slate-900 text-white font-bold flex items-center justify-center shadow-md active:scale-95 transition-transform"
+        >
+          <Plus className="w-5 h-5 text-amber-400 stroke-[2.5]" />
+        </button>
+
+        <button
+          onClick={() => setCurrentSection('tasks')}
+          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-lg text-[10px] font-medium transition-colors ${
+            currentSection === 'tasks' ? 'text-slate-950 font-bold' : 'text-slate-500'
+          }`}
+        >
+          <CheckSquare className="w-4 h-4" />
+          <span>Tasks</span>
+        </button>
+
+        <button
+          onClick={() => setCurrentSection('chits')}
+          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-lg text-[10px] font-medium transition-colors ${
+            currentSection === 'chits' ? 'text-slate-950 font-bold' : 'text-slate-500'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          <span>Chits</span>
+        </button>
+      </nav>
+
+      {/* GLOBAL MODALS */}
+      <QuickAddModal />
+      <GlobalSearchModal />
+      <RecordPaymentModal />
+      <NotificationsDrawer />
+      <PartnerAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLoginSuccess={() => setIsAuthModalOpen(false)}
+      />
+    </div>
+  );
+}
