@@ -84,7 +84,8 @@ interface PartnerStoreContextType {
   addPhotoReminder: (item: Omit<PhotoReminderItem, 'id' | 'createdAt' | 'updatedAt'>) => Promise<PhotoReminderItem>;
   updatePhotoReminder: (id: string, updates: Partial<PhotoReminderItem>) => Promise<void>;
   deletePhotoReminder: (id: string) => Promise<void>;
-  togglePhotoReminderComplete: (id: string) => Promise<void>;
+  togglePhotoReminderComplete: (id: string, customCompletedDate?: string) => Promise<void>;
+  toggleSubReminderComplete: (reminderId: string, subReminderId: string) => Promise<void>;
   snoozePhotoReminder: (id: string, days?: number) => Promise<void>;
   
   // Notifications
@@ -903,18 +904,33 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
 
     setPhotoReminders(prev => [newReminder, ...prev]);
 
+    // If client matches a payment, attach receipt image to payment transactions/records
+    if (newReminder.clientName) {
+      setPayments(prev => prev.map(p => {
+        if (p.clientName.toLowerCase() === newReminder.clientName.toLowerCase()) {
+          const currentReceipts = p.receiptImages || [];
+          return {
+            ...p,
+            receiptImages: [...currentReceipts, newReminder.imageUrl]
+          };
+        }
+        return p;
+      }));
+    }
+
     // Also auto-create a linked Task so it appears in standard task checklists seamlessly
     try {
       await addTask({
         title: `📸 ${newReminder.title} ${newReminder.amount ? `(₹${newReminder.amount.toLocaleString('en-IN')})` : ''}`,
-        description: `Photo reminder (${newReminder.preset.replace('_', ' ')}) ${newReminder.notes || ''}`,
+        description: `Client: ${newReminder.clientName} • Photo reminder (${newReminder.preset.replace('_', ' ')}) ${newReminder.notes || ''}`,
         dueDate: newReminder.reminderDate,
         priority: 'High',
         assignedTo: activePartner.name,
-        category: 'Document Reminder',
+        category: 'Receipt Reminder',
         status: 'Pending',
         imageUrl: newReminder.imageUrl,
         amount: newReminder.amount,
+        clientName: newReminder.clientName,
         createdBy: activePartner.name
       });
     } catch (tErr) {
@@ -936,11 +952,41 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
     setPhotoReminders(prev => prev.filter(r => r.id !== id));
   };
 
-  const togglePhotoReminderComplete = async (id: string) => {
+  const togglePhotoReminderComplete = async (id: string, customCompletedDate?: string) => {
     const target = photoReminders.find(r => r.id === id);
     if (!target) return;
-    const newStatus = target.status === 'Completed' ? 'Pending' : 'Completed';
-    await updatePhotoReminder(id, { status: newStatus });
+    const isCompleted = target.status === 'Completed';
+    const newStatus = isCompleted ? 'Pending' : 'Completed';
+    const completedAt = !isCompleted ? (customCompletedDate || new Date().toISOString()) : undefined;
+    
+    await updatePhotoReminder(id, { 
+      status: newStatus,
+      completedAt 
+    });
+  };
+
+  const toggleSubReminderComplete = async (reminderId: string, subReminderId: string) => {
+    const target = photoReminders.find(r => r.id === reminderId);
+    if (!target || !target.remindersList) return;
+
+    const updatedList = target.remindersList.map(sub => {
+      if (sub.id === subReminderId) {
+        const nextState = !sub.completed;
+        return {
+          ...sub,
+          completed: nextState,
+          completedAt: nextState ? new Date().toISOString() : undefined
+        };
+      }
+      return sub;
+    });
+
+    const allDone = updatedList.every(s => s.completed);
+    await updatePhotoReminder(reminderId, {
+      remindersList: updatedList,
+      status: allDone ? 'Completed' : 'Pending',
+      completedAt: allDone ? new Date().toISOString() : undefined
+    });
   };
 
   const snoozePhotoReminder = async (id: string, days = 1) => {
@@ -988,6 +1034,7 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
         updatePhotoReminder,
         deletePhotoReminder,
         togglePhotoReminderComplete,
+        toggleSubReminderComplete,
         snoozePhotoReminder,
         notifications,
         markNotificationRead,

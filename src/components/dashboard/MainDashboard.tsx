@@ -13,8 +13,13 @@ import {
   RotateCcw,
   Eye,
   X,
-  ArrowRight
+  ArrowRight,
+  User,
+  Calendar,
+  Clock,
+  CheckCircle2
 } from 'lucide-react';
+import { PhotoReminderItem } from '@/types';
 
 export default function MainDashboard() {
   const { 
@@ -29,12 +34,13 @@ export default function MainDashboard() {
     tasks,
     photoReminders,
     togglePhotoReminderComplete,
+    toggleSubReminderComplete,
     snoozePhotoReminder,
     toggleTaskComplete,
     openRecordPaymentModal
   } = usePartnerStore();
 
-  const [previewImage, setPreviewImage] = useState<{ src: string; title: string; amount?: number } | null>(null);
+  const [previewReminder, setPreviewReminder] = useState<PhotoReminderItem | null>(null);
 
   const todayFormatted = new Date().toLocaleDateString('en-IN', {
     weekday: 'short',
@@ -146,48 +152,58 @@ export default function MainDashboard() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {todaysPhotoReminders.map(item => (
-              <div
-                key={item.id}
-                className="bg-slate-900/80 border border-slate-800 rounded-lg p-2.5 flex gap-3 items-center justify-between"
-              >
-                <div 
-                  onClick={() => setPreviewImage({ src: item.imageUrl, title: item.title, amount: item.amount })}
-                  className="w-11 h-11 rounded-lg bg-slate-800 overflow-hidden flex-shrink-0 cursor-pointer border border-slate-700 relative group"
+            {todaysPhotoReminders.map(item => {
+              const totalSub = item.remindersList?.length || 1;
+              const completedSub = item.remindersList?.filter(r => r.completed).length || 0;
+
+              return (
+                <div
+                  key={item.id}
+                  className="bg-slate-900/80 border border-slate-800 rounded-lg p-2.5 flex gap-3 items-center justify-between"
                 >
-                  <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
-                    <Eye className="w-3.5 h-3.5" />
+                  <div 
+                    onClick={() => setPreviewReminder(item)}
+                    className="w-12 h-12 rounded-lg bg-slate-800 overflow-hidden flex-shrink-0 cursor-pointer border border-slate-700 relative group"
+                  >
+                    <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                      <Eye className="w-3.5 h-3.5" />
+                    </div>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold truncate max-w-[120px]">
+                        👤 {item.clientName || 'General'}
+                      </span>
+                    </div>
+                    <h4 className="text-xs font-semibold text-white truncate mt-0.5">{item.title}</h4>
+                    {item.amount && (
+                      <span className="text-[11px] font-bold text-amber-400 block">
+                        ₹{item.amount.toLocaleString('en-IN')}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => snoozePhotoReminder(item.id, 1)}
+                      className="p-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-[10px] transition-colors cursor-pointer border border-slate-700"
+                      title="Snooze +1 Day"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => togglePhotoReminderComplete(item.id)}
+                      className="p-1.5 rounded-md bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-bold transition-colors cursor-pointer"
+                      title="Mark Complete"
+                    >
+                      <Check className="w-3 h-3 stroke-[3]" />
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-xs font-semibold text-white truncate">{item.title}</h4>
-                  {item.amount && (
-                    <span className="text-[11px] font-bold text-amber-400 block">
-                      ₹{item.amount.toLocaleString('en-IN')}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => snoozePhotoReminder(item.id, 1)}
-                    className="p-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-[10px] transition-colors cursor-pointer border border-slate-700"
-                    title="Snooze +1 Day"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={() => togglePhotoReminderComplete(item.id)}
-                    className="p-1.5 rounded-md bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-bold transition-colors cursor-pointer"
-                    title="Mark Done"
-                  >
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -396,37 +412,107 @@ export default function MainDashboard() {
 
       </div>
 
-      {/* FULL-SCREEN IMAGE LIGHTBOX */}
-      {previewImage && (
+      {/* FULL RECEIPT DETAILS & MULTIPLE REMINDERS MODAL */}
+      {previewReminder && (
         <div 
-          onClick={() => setPreviewImage(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fadeIn"
+          onClick={() => setPreviewReminder(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fadeIn overflow-y-auto"
         >
           <div 
             onClick={e => e.stopPropagation()}
-            className="relative max-w-2xl w-full bg-[#0f172a] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-4 space-y-3"
+            className="relative max-w-xl w-full bg-[#0f172a] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-5 space-y-4 text-slate-100 my-6"
           >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <h3 className="font-bold text-white text-sm">{previewImage.title}</h3>
-                {previewImage.amount && (
-                  <p className="text-xs font-bold text-amber-400">₹{previewImage.amount.toLocaleString('en-IN')}</p>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">
+                  Client: {previewReminder.clientName || 'General'}
+                </span>
+                <h3 className="font-bold text-white text-sm mt-1">{previewReminder.title}</h3>
+                {previewReminder.amount && (
+                  <p className="text-xs font-bold text-amber-400">₹{previewReminder.amount.toLocaleString('en-IN')}</p>
                 )}
               </div>
               <button
-                onClick={() => setPreviewImage(null)}
+                onClick={() => setPreviewReminder(null)}
                 className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="max-h-[70vh] overflow-auto rounded-xl bg-slate-950 flex items-center justify-center border border-slate-800/80">
+            {/* Attached Photo */}
+            <div className="max-h-60 overflow-auto rounded-xl bg-slate-950 flex items-center justify-center border border-slate-800/80">
               <img
-                src={previewImage.src}
-                alt={previewImage.title}
-                className="max-h-[65vh] w-auto object-contain rounded-lg"
+                src={previewReminder.imageUrl}
+                alt={previewReminder.title}
+                className="max-h-56 w-auto object-contain rounded-lg"
               />
+            </div>
+
+            {/* Multiple Follow-up Reminders Checklist */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-300">Scheduled Reminders & Follow-ups</h4>
+              <div className="space-y-1.5">
+                {previewReminder.remindersList && previewReminder.remindersList.length > 0 ? (
+                  previewReminder.remindersList.map(sub => (
+                    <div 
+                      key={sub.id}
+                      className={`p-2.5 rounded-lg border flex items-center justify-between gap-2 text-xs transition-colors ${
+                        sub.completed ? 'bg-slate-900/40 border-slate-800/60 opacity-60' : 'bg-slate-900 border-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <button
+                          onClick={() => toggleSubReminderComplete(previewReminder.id, sub.id)}
+                          className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer ${
+                            sub.completed ? 'bg-amber-500 border-amber-500 text-slate-950' : 'border-slate-700 bg-slate-800'
+                          }`}
+                        >
+                          {sub.completed && <Check className="w-3 h-3 stroke-[3]" />}
+                        </button>
+                        <div>
+                          <p className={`font-medium ${sub.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>
+                            {sub.note || 'Follow-up reminder'}
+                          </p>
+                          <span className="text-[10px] text-slate-500">📅 {sub.date}</span>
+                        </div>
+                      </div>
+
+                      {sub.completed && sub.completedAt && (
+                        <span className="text-[9px] text-emerald-400 font-medium">
+                          Done: {new Date(sub.completedAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-xs flex justify-between">
+                    <span>Due: {previewReminder.reminderDate}</span>
+                    <span className="text-slate-400">{previewReminder.status}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Completion Actions */}
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+              <span className="text-xs text-slate-400">
+                Status: <strong className={previewReminder.status === 'Completed' ? 'text-emerald-400' : 'text-amber-400'}>{previewReminder.status}</strong>
+              </span>
+
+              <button
+                onClick={() => {
+                  togglePhotoReminderComplete(previewReminder.id);
+                  setPreviewReminder(null);
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  previewReminder.status === 'Completed'
+                    ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    : 'bg-amber-500 text-slate-950 hover:bg-amber-400'
+                }`}
+              >
+                {previewReminder.status === 'Completed' ? 'Mark Incomplete' : 'Mark Completed (Select Done)'}
+              </button>
             </div>
           </div>
         </div>

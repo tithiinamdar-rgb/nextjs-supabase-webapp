@@ -47,6 +47,7 @@ export interface PaymentItem {
   notes?: string;
   reminderDate?: string;
   imageUrl?: string;
+  receiptImages?: string[];
   archived?: boolean;
   createdBy: string;
   updatedBy?: string;
@@ -84,6 +85,7 @@ export interface NoteItem {
   tags: string[];
   pinned: boolean;
   imageUrl?: string;
+  clientName?: string;
   archived?: boolean;
   createdBy: string;
   updatedBy?: string;
@@ -106,22 +108,37 @@ export interface TaskItem {
   status: TaskStatus;
   amount?: number;
   imageUrl?: string;
+  clientName?: string;
   preset?: string;
+  completedAt?: string;
   createdBy: string;
   updatedBy?: string;
   createdAt: string;
   updatedAt: string;
 }
 
+export interface ReminderScheduleItem {
+  id: string;
+  date: string;
+  note: string;
+  preset?: string;
+  completed: boolean;
+  completedAt?: string;
+}
+
 export interface PhotoReminderItem {
   id: string;
   title: string;
+  clientName: string;
+  clientId?: string;
   amount?: number;
   imageUrl: string;
   reminderDate: string;
   preset: '1_day' | '2_days' | '7_days' | '15_days' | '30_days' | 'custom';
   notes?: string;
   status: 'Pending' | 'Completed' | 'Snoozed';
+  completedAt?: string;
+  remindersList?: ReminderScheduleItem[];
   createdBy: string;
   createdAt: string;
   updatedAt: string;
