@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { usePartnerStore } from '@/lib/store/partnerStore';
 import { 
   Camera, 
@@ -9,7 +9,9 @@ import {
   IndianRupee, 
   Sparkles, 
   RotateCcw,
-  AlertCircle
+  AlertCircle,
+  Image as ImageIcon,
+  Check
 } from 'lucide-react';
 
 interface PhotoReminderModalProps {
@@ -21,18 +23,17 @@ export default function PhotoReminderModal({ isOpen, onClose }: PhotoReminderMod
   const { addPhotoReminder, activePartner } = usePartnerStore();
   
   const [imageSrc, setImageSrc] = useState<string | null>(null);
-  const [isCameraActive, setIsCameraActive] = useState(false);
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [selectedPreset, setSelectedPreset] = useState<'1_day' | '2_days' | '7_days' | '15_days' | '30_days' | 'custom'>('1_day');
   const [customDate, setCustomDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
   const calculateDateForPreset = (preset: string, custom?: string): string => {
     const d = new Date();
@@ -45,64 +46,85 @@ export default function PhotoReminderModal({ isOpen, onClose }: PhotoReminderMod
     return d.toISOString().split('T')[0];
   };
 
-  const startCamera = async () => {
+  // Compress & resize image for fast mobile performance
+  const processImageFile = (file: File) => {
+    setIsProcessingImage(true);
     setError('');
-    setIsCameraActive(true);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' }, 
-        audio: false 
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
-    } catch (err: any) {
-      console.warn('Camera access error:', err);
-      setIsCameraActive(false);
-      if (fileInputRef.current) fileInputRef.current.click();
-    }
-  };
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    setIsCameraActive(false);
-  };
-
-  const capturePhoto = () => {
-    if (!videoRef.current) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth || 640;
-    canvas.height = videoRef.current.videoHeight || 480;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-      setImageSrc(dataUrl);
-      stopCamera();
-    }
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setImageSrc(event.target.result as string);
-        stopCamera();
-      }
+    reader.onerror = () => {
+      setError('Could not read image file. Please try again.');
+      setIsProcessingImage(false);
     };
+
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      if (!result) {
+        setIsProcessingImage(false);
+        return;
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 1280;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.82);
+          setImageSrc(compressed);
+        } else {
+          setImageSrc(result);
+        }
+        setIsProcessingImage(false);
+      };
+
+      img.onerror = () => {
+        setImageSrc(result);
+        setIsProcessingImage(false);
+      };
+
+      img.src = result;
+    };
+
     reader.readAsDataURL(file);
   };
 
+  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processImageFile(file);
+    }
+    // reset input value so user can take another if needed
+    e.target.value = '';
+  };
+
+  const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processImageFile(file);
+    }
+    e.target.value = '';
+  };
+
   const handleClose = () => {
-    stopCamera();
     setImageSrc(null);
     setTitle('');
     setAmount('');
@@ -116,11 +138,11 @@ export default function PhotoReminderModal({ isOpen, onClose }: PhotoReminderMod
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!imageSrc) {
-      setError('Please click an image or upload a photo of the receipt/cheque.');
+      setError('Please click a photo of the receipt or cheque.');
       return;
     }
     if (!title.trim()) {
-      setError('Please provide a name or title for this receipt reminder.');
+      setError('Please provide a name/party for this receipt.');
       return;
     }
 
@@ -143,31 +165,25 @@ export default function PhotoReminderModal({ isOpen, onClose }: PhotoReminderMod
 
       handleClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to save reminder');
+      setError(err.message || 'Failed to save receipt reminder');
     } finally {
       setIsSaving(false);
     }
   };
-
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, []);
 
   if (!isOpen) return null;
 
   const targetDateDisplay = calculateDateForPreset(selectedPreset, customDate);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn overflow-y-auto">
-      <div className="relative w-full max-w-md bg-[#0f172a] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden my-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn overflow-y-auto">
+      <div className="relative w-full max-w-md bg-[#0f172a] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden my-4 text-slate-100">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-900/40">
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-900/60">
+          <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-bold">
-              <Camera className="w-3.5 h-3.5" />
+              <Camera className="w-3.5 h-3.5 stroke-[2.5]" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-white leading-tight">Click Image of Receipt</h2>
@@ -183,7 +199,7 @@ export default function PhotoReminderModal({ isOpen, onClose }: PhotoReminderMod
         </div>
 
         {/* Content Body */}
-        <form onSubmit={handleSave} className="p-5 space-y-4">
+        <form onSubmit={handleSave} className="p-4 sm:p-5 space-y-3.5 text-xs">
           {error && (
             <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-900/60 flex items-center gap-2 text-xs text-rose-300">
               <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
@@ -191,101 +207,92 @@ export default function PhotoReminderModal({ isOpen, onClose }: PhotoReminderMod
             </div>
           )}
 
-          {/* Photo Capture Section */}
+          {/* 1. PHOTO CAPTURE (100% RELIABLE FOR MOBILE & DESKTOP) */}
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              1. Receipt / Cheque Photo
+            <label className="block text-slate-300 font-medium mb-1.5">
+              1. Receipt / Cheque Photo *
             </label>
 
-            {!imageSrc && !isCameraActive && (
+            {!imageSrc ? (
               <div className="grid grid-cols-2 gap-2.5">
+                {/* Take Photo button (native mobile camera) */}
                 <button
                   type="button"
-                  onClick={startCamera}
-                  className="py-5 px-3 rounded-xl border border-dashed border-slate-700 hover:border-amber-500 bg-slate-900/70 hover:bg-slate-800 text-slate-300 flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  onClick={() => cameraInputRef.current?.click()}
+                  disabled={isProcessingImage}
+                  className="py-6 px-3 rounded-xl border-2 border-dashed border-amber-500/40 hover:border-amber-500 bg-amber-500/5 hover:bg-amber-500/10 text-slate-200 flex flex-col items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 group"
                 >
-                  <Camera className="w-5 h-5 text-amber-400" />
-                  <span className="text-xs font-medium text-slate-200">Click Image</span>
-                  <span className="text-[10px] text-slate-500">Camera</span>
+                  <div className="w-10 h-10 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                    <Camera className="w-5 h-5 stroke-[2.5]" />
+                  </div>
+                  <span className="text-xs font-bold text-white">Take Photo</span>
+                  <span className="text-[10px] text-amber-400/80 font-medium">Opens phone camera</span>
                 </button>
 
+                {/* Upload from Gallery button */}
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="py-5 px-3 rounded-xl border border-dashed border-slate-700 hover:border-slate-600 bg-slate-900/70 hover:bg-slate-800 text-slate-300 flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  onClick={() => galleryInputRef.current?.click()}
+                  disabled={isProcessingImage}
+                  className="py-6 px-3 rounded-xl border border-dashed border-slate-700 hover:border-slate-500 bg-slate-900/70 hover:bg-slate-800 text-slate-300 flex flex-col items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
                 >
-                  <Upload className="w-5 h-5 text-slate-400" />
-                  <span className="text-xs font-medium text-slate-200">Upload Image</span>
-                  <span className="text-[10px] text-slate-500">From Files</span>
+                  <div className="w-10 h-10 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center border border-slate-700">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-medium text-slate-200">From Gallery</span>
+                  <span className="text-[10px] text-slate-500">Pick saved image</span>
                 </button>
 
+                {/* Hidden native input for mobile rear camera */}
                 <input
-                  ref={fileInputRef}
+                  ref={cameraInputRef}
                   type="file"
                   accept="image/*"
                   capture="environment"
-                  onChange={handleFileUpload}
+                  onChange={handleCameraCapture}
+                  className="hidden"
+                />
+
+                {/* Hidden native input for gallery/photo library */}
+                <input
+                  ref={galleryInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleGalleryUpload}
                   className="hidden"
                 />
               </div>
-            )}
-
-            {/* LIVE CAMERA */}
-            {isCameraActive && (
-              <div className="relative rounded-xl overflow-hidden bg-black aspect-video flex flex-col items-center justify-center border border-slate-800">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute bottom-2.5 left-0 right-0 flex items-center justify-center gap-2 px-3">
-                  <button
-                    type="button"
-                    onClick={capturePhoto}
-                    className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg cursor-pointer"
-                  >
-                    <Camera className="w-3.5 h-3.5" />
-                    <span>Capture</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={stopCamera}
-                    className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* IMAGE PREVIEW */}
-            {imageSrc && (
+            ) : (
               <div className="relative rounded-xl overflow-hidden border border-slate-800 bg-slate-950 aspect-video group">
                 <img
                   src={imageSrc}
-                  alt="Captured"
+                  alt="Captured receipt"
                   className="w-full h-full object-contain"
                 />
-                <div className="absolute top-2 right-2">
+                <div className="absolute top-2 right-2 flex gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setImageSrc(null)}
-                    className="px-2 py-1 rounded bg-slate-900/90 text-slate-200 hover:text-white border border-slate-700 text-xs flex items-center gap-1 cursor-pointer"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="px-2.5 py-1 rounded-lg bg-slate-900/90 text-white hover:bg-slate-800 border border-slate-700 text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
                   >
-                    <RotateCcw className="w-3 h-3" />
-                    <span>Retake</span>
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Retake Photo</span>
                   </button>
                 </div>
               </div>
             )}
+
+            {isProcessingImage && (
+              <p className="text-xs text-amber-400 text-center mt-2 animate-pulse">
+                Optimizing image...
+              </p>
+            )}
           </div>
 
-          {/* NAME & AMOUNT */}
+          {/* 2. NAME & AMOUNT */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
+              <label className="block text-slate-300 font-medium mb-1">
                 2. Name / Description *
               </label>
               <input
@@ -293,13 +300,13 @@ export default function PhotoReminderModal({ isOpen, onClose }: PhotoReminderMod
                 required
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                placeholder="e.g. Ramesh Cheque"
-                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white placeholder:text-slate-600 text-xs focus:outline-none focus:border-amber-500 transition-all font-medium"
+                placeholder="e.g. Ramesh Cheque / Token Slip"
+                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white placeholder:text-slate-600 text-xs focus:outline-none focus:border-amber-500 font-medium"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
+              <label className="block text-slate-300 font-medium mb-1">
                 Amount (₹) (Optional)
               </label>
               <div className="relative">
@@ -309,16 +316,16 @@ export default function PhotoReminderModal({ isOpen, onClose }: PhotoReminderMod
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
                   placeholder="250000"
-                  className="w-full pl-7 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white placeholder:text-slate-600 text-xs focus:outline-none focus:border-amber-500 transition-all font-medium"
+                  className="w-full pl-7 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white placeholder:text-slate-600 text-xs focus:outline-none focus:border-amber-500 font-medium"
                 />
               </div>
             </div>
           </div>
 
-          {/* PRESET OPTIONS */}
+          {/* 3. PRESET REMINDER OPTIONS */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-medium text-slate-300">
+              <label className="text-slate-300 font-medium">
                 3. Reminder When:
               </label>
               <span className="text-[10px] text-amber-400 font-mono">
@@ -343,7 +350,7 @@ export default function PhotoReminderModal({ isOpen, onClose }: PhotoReminderMod
                     onClick={() => setSelectedPreset(preset.id as any)}
                     className={`py-1.5 px-1 rounded-lg text-xs font-semibold transition-all cursor-pointer text-center border ${
                       isSelected
-                        ? 'bg-amber-500 text-slate-950 border-amber-500'
+                        ? 'bg-amber-500 text-slate-950 border-amber-500 font-bold'
                         : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
                     }`}
                   >
@@ -367,19 +374,33 @@ export default function PhotoReminderModal({ isOpen, onClose }: PhotoReminderMod
             )}
           </div>
 
+          {/* 4. NOTES */}
+          <div>
+            <label className="block text-slate-300 font-medium mb-1">
+              Notes (Optional)
+            </label>
+            <input
+              type="text"
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="e.g. Call before clearing from bank"
+              className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white placeholder:text-slate-600 text-xs focus:outline-none focus:border-amber-500"
+            />
+          </div>
+
           {/* SUBMIT BUTTON */}
           <div className="pt-1">
             <button
               type="submit"
-              disabled={isSaving}
-              className="w-full py-2.5 rounded-xl bg-white hover:bg-slate-100 active:scale-[0.99] text-slate-950 text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer disabled:opacity-60"
+              disabled={isSaving || isProcessingImage}
+              className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-[0.99] text-slate-950 text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer disabled:opacity-60"
             >
               {isSaving ? (
-                <span>Saving...</span>
+                <span>Saving Receipt...</span>
               ) : (
                 <>
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Set Photo Reminder</span>
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>Set Receipt Reminder</span>
                 </>
               )}
             </button>
