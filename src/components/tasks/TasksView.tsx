@@ -109,7 +109,7 @@ export default function TasksView() {
             className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-amber-400 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <Camera className="w-3.5 h-3.5" />
-            <span>Snap Reminder</span>
+            <span>Click Image of Receipt</span>
           </button>
           <button
             onClick={() => openQuickAdd('task')}

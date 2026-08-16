@@ -65,7 +65,7 @@ export default function MainDashboard() {
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95"
           >
             <Camera className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Snap Reminder</span>
+            <span>Click Image of Receipt</span>
           </button>
 
           <button
@@ -135,13 +135,13 @@ export default function MainDashboard() {
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-bold text-white flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-500" />
-              <span>Today&apos;s Photo Reminders ({todaysPhotoReminders.length})</span>
+              <span>Today&apos;s Receipts & Reminders ({todaysPhotoReminders.length})</span>
             </h2>
             <button
               onClick={() => openPhotoReminderModal()}
               className="text-[11px] font-semibold text-amber-400 hover:text-amber-300 cursor-pointer"
             >
-              + Snap New
+              + Click Image
             </button>
           </div>
 

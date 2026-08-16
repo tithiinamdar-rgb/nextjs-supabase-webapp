@@ -99,7 +99,7 @@ export default function AppShell() {
               className="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-95"
             >
               <Camera className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Snap Reminder</span>
+              <span>Click Image of Receipt</span>
             </button>
 
             <button
@@ -225,14 +225,14 @@ export default function AppShell() {
 
           {/* Right Header Controls */}
           <div className="flex items-center gap-2">
-            {/* Snap reminder button */}
+            {/* Click Image of Receipt button */}
             <button
               onClick={() => openPhotoReminderModal()}
               className="p-1.5 px-2.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-medium"
-              title="Snap & Set Reminder"
+              title="Click Image of Receipt"
             >
               <Camera className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Snap</span>
+              <span className="hidden sm:inline">Receipt</span>
             </button>
 
             {/* Universal Search trigger */}

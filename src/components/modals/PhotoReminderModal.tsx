@@ -116,11 +116,11 @@ export default function PhotoReminderModal({ isOpen, onClose }: PhotoReminderMod
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!imageSrc) {
-      setError('Please snap or upload a photo of the cheque or document.');
+      setError('Please click an image or upload a photo of the receipt/cheque.');
       return;
     }
     if (!title.trim()) {
-      setError('Please provide a name or title for this reminder.');
+      setError('Please provide a name or title for this receipt reminder.');
       return;
     }
 
@@ -170,8 +170,8 @@ export default function PhotoReminderModal({ isOpen, onClose }: PhotoReminderMod
               <Camera className="w-3.5 h-3.5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white leading-tight">Snap & Set Reminder</h2>
-              <p className="text-[10px] text-slate-400">Photo document/cheque reminder</p>
+              <h2 className="text-sm font-bold text-white leading-tight">Click Image of Receipt</h2>
+              <p className="text-[10px] text-slate-400">Photo document/receipt reminder</p>
             </div>
           </div>
           <button
@@ -194,7 +194,7 @@ export default function PhotoReminderModal({ isOpen, onClose }: PhotoReminderMod
           {/* Photo Capture Section */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              1. Document / Cheque Photo
+              1. Receipt / Cheque Photo
             </label>
 
             {!imageSrc && !isCameraActive && (
@@ -205,7 +205,7 @@ export default function PhotoReminderModal({ isOpen, onClose }: PhotoReminderMod
                   className="py-5 px-3 rounded-xl border border-dashed border-slate-700 hover:border-amber-500 bg-slate-900/70 hover:bg-slate-800 text-slate-300 flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                   <Camera className="w-5 h-5 text-amber-400" />
-                  <span className="text-xs font-medium text-slate-200">Snap Photo</span>
+                  <span className="text-xs font-medium text-slate-200">Click Image</span>
                   <span className="text-[10px] text-slate-500">Camera</span>
                 </button>
 
