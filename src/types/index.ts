@@ -158,6 +158,7 @@ export interface AppNotification {
 
 export type NavigationSection = 
   | 'dashboard' 
+  | 'clients'
   | 'payments' 
   | 'chits' 
   | 'notes' 

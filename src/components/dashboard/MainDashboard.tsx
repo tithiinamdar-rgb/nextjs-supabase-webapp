@@ -37,7 +37,8 @@ export default function MainDashboard() {
     toggleSubReminderComplete,
     snoozePhotoReminder,
     toggleTaskComplete,
-    openRecordPaymentModal
+    openRecordPaymentModal,
+    openClientDossier
   } = usePartnerStore();
 
   const [previewReminder, setPreviewReminder] = useState<PhotoReminderItem | null>(null);
@@ -173,9 +174,12 @@ export default function MainDashboard() {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold truncate max-w-[120px]">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openClientDossier(item.clientName || 'General'); }}
+                        className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 font-semibold truncate max-w-[120px] cursor-pointer transition-colors"
+                      >
                         👤 {item.clientName || 'General'}
-                      </span>
+                      </button>
                     </div>
                     <h4 className="text-xs font-semibold text-white truncate mt-0.5">{item.title}</h4>
                     {item.amount && (
@@ -238,7 +242,12 @@ export default function MainDashboard() {
                   >
                     <div className="flex items-center gap-2 truncate">
                       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${p.type === 'to_collect' ? 'bg-emerald-400' : 'bg-rose-400'}`} />
-                      <span className="font-medium text-slate-200 truncate">{p.clientName}</span>
+                      <button
+                        onClick={() => openClientDossier(p.clientName)}
+                        className="font-medium text-slate-200 hover:text-amber-400 truncate cursor-pointer transition-colors text-left"
+                      >
+                        {p.clientName}
+                      </button>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className="font-bold text-white">₹{(p.remainingAmount || p.amount).toLocaleString('en-IN')}</span>

@@ -25,7 +25,8 @@ export default function PaymentsView() {
     openRecordPaymentModal, 
     openPhotoReminderModal,
     deletePayment,
-    photoReminders
+    photoReminders,
+    openClientDossier
   } = usePartnerStore();
 
   const [activeTab, setActiveTab] = useState<'all' | 'to_collect' | 'to_pay'>('all');
@@ -161,7 +162,12 @@ export default function PaymentsView() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-white text-xs">{payment.clientName}</h3>
+                      <button
+                        onClick={() => openClientDossier(payment.clientName)}
+                        className="font-semibold text-white hover:text-amber-400 text-xs transition-colors cursor-pointer text-left"
+                      >
+                        {payment.clientName}
+                      </button>
                       {payment.propertyName && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">
                           {payment.propertyName}

@@ -115,6 +115,14 @@ interface PartnerStoreContextType {
   isNotificationsOpen: boolean;
   setIsNotificationsOpen: (open: boolean) => void;
 
+  // Client 360 Dossier
+  selectedClient: string | null;
+  setSelectedClient: (client: string | null) => void;
+  isClientDossierOpen: boolean;
+  setIsClientDossierOpen: (open: boolean) => void;
+  openClientDossier: (clientName: string) => void;
+  allClientNames: string[];
+
   // Dashboard Metrics & Insights
   metrics: {
     totalToCollect: number;
@@ -159,6 +167,24 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
   const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
   const [recordPaymentTarget, setRecordPaymentTarget] = useState<PaymentItem | null>(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  // Client 360 Dossier State
+  const [selectedClient, setSelectedClient] = useState<string | null>(null);
+  const [isClientDossierOpen, setIsClientDossierOpen] = useState(false);
+
+  const openClientDossier = useCallback((clientName: string) => {
+    setSelectedClient(clientName);
+    setIsClientDossierOpen(true);
+  }, []);
+
+  const allClientNames = useMemo(() => {
+    const set = new Set<string>();
+    payments.forEach(p => { if (p.clientName?.trim()) set.add(p.clientName.trim()); });
+    photoReminders.forEach(pr => { if (pr.clientName?.trim()) set.add(pr.clientName.trim()); });
+    chits.forEach(c => { if (c.personName?.trim()) set.add(c.personName.trim()); });
+    tasks.forEach(t => { if (t.clientName?.trim()) set.add(t.clientName.trim()); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [payments, photoReminders, chits, tasks]);
 
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -1055,6 +1081,12 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
         closeRecordPaymentModal,
         isNotificationsOpen,
         setIsNotificationsOpen,
+        selectedClient,
+        setSelectedClient,
+        isClientDossierOpen,
+        setIsClientDossierOpen,
+        openClientDossier,
+        allClientNames,
         metrics,
         isSupabaseConnected,
         isSyncing
