@@ -46,6 +46,7 @@ export interface PaymentItem {
   status: PaymentStatus;
   notes?: string;
   reminderDate?: string;
+  imageUrl?: string;
   archived?: boolean;
   createdBy: string;
   updatedBy?: string;
@@ -82,6 +83,7 @@ export interface NoteItem {
   category: string;
   tags: string[];
   pinned: boolean;
+  imageUrl?: string;
   archived?: boolean;
   createdBy: string;
   updatedBy?: string;
@@ -102,8 +104,25 @@ export interface TaskItem {
   assignedTo: string;
   category: string;
   status: TaskStatus;
+  amount?: number;
+  imageUrl?: string;
+  preset?: string;
   createdBy: string;
   updatedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PhotoReminderItem {
+  id: string;
+  title: string;
+  amount?: number;
+  imageUrl: string;
+  reminderDate: string;
+  preset: '1_day' | '2_days' | '7_days' | '15_days' | '30_days' | 'custom';
+  notes?: string;
+  status: 'Pending' | 'Completed' | 'Snoozed';
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -111,7 +130,7 @@ export interface TaskItem {
 export interface AppNotification {
   id: string;
   userId?: string;
-  type: 'payment_due' | 'collection_due' | 'overdue' | 'task_due' | 'system';
+  type: 'payment_due' | 'collection_due' | 'overdue' | 'task_due' | 'photo_reminder' | 'system';
   title: string;
   message: string;
   relatedRecordId?: string;

@@ -8,6 +8,7 @@ import {
   ChitItem, 
   NoteItem, 
   TaskItem, 
+  PhotoReminderItem,
   AppNotification, 
   NavigationSection 
 } from '@/types';
@@ -37,6 +38,7 @@ const INITIAL_PAYMENTS: PaymentItem[] = [];
 const INITIAL_CHITS: ChitItem[] = [];
 const INITIAL_NOTES: NoteItem[] = [];
 const INITIAL_TASKS: TaskItem[] = [];
+const INITIAL_PHOTO_REMINDERS: PhotoReminderItem[] = [];
 
 interface PartnerStoreContextType {
   isAuthenticated: boolean;
@@ -76,6 +78,14 @@ interface PartnerStoreContextType {
   deleteTask: (id: string) => Promise<void>;
   toggleTaskComplete: (id: string) => Promise<void>;
   moveTaskToTomorrow: (id: string) => Promise<void>;
+
+  // Photo Reminders (Snap & Remind)
+  photoReminders: PhotoReminderItem[];
+  addPhotoReminder: (item: Omit<PhotoReminderItem, 'id' | 'createdAt' | 'updatedAt'>) => Promise<PhotoReminderItem>;
+  updatePhotoReminder: (id: string, updates: Partial<PhotoReminderItem>) => Promise<void>;
+  deletePhotoReminder: (id: string) => Promise<void>;
+  togglePhotoReminderComplete: (id: string) => Promise<void>;
+  snoozePhotoReminder: (id: string, days?: number) => Promise<void>;
   
   // Notifications
   notifications: AppNotification[];
@@ -88,6 +98,10 @@ interface PartnerStoreContextType {
   setIsQuickAddOpen: (open: boolean) => void;
   quickAddDefaultTab: 'payment_pay' | 'payment_collect' | 'chit' | 'note' | 'task';
   openQuickAdd: (tab?: 'payment_pay' | 'payment_collect' | 'chit' | 'note' | 'task') => void;
+
+  isPhotoReminderModalOpen: boolean;
+  setIsPhotoReminderModalOpen: (open: boolean) => void;
+  openPhotoReminderModal: () => void;
   
   isGlobalSearchOpen: boolean;
   setIsGlobalSearchOpen: (open: boolean) => void;
@@ -113,6 +127,7 @@ interface PartnerStoreContextType {
     dueTodayCount: number;
     dueNext3DaysCount: number;
     pendingTasksTodayCount: number;
+    pendingPhotoRemindersTodayCount: number;
     activeChitsCount: number;
     activeChitsTotal: number;
   };
@@ -133,10 +148,12 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
   const [chits, setChits] = useState<ChitItem[]>(INITIAL_CHITS);
   const [notes, setNotes] = useState<NoteItem[]>(INITIAL_NOTES);
   const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
+  const [photoReminders, setPhotoReminders] = useState<PhotoReminderItem[]>(INITIAL_PHOTO_REMINDERS);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [quickAddDefaultTab, setQuickAddDefaultTab] = useState<'payment_pay' | 'payment_collect' | 'chit' | 'note' | 'task'>('payment_collect');
+  const [isPhotoReminderModalOpen, setIsPhotoReminderModalOpen] = useState(false);
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
   const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
   const [recordPaymentTarget, setRecordPaymentTarget] = useState<PaymentItem | null>(null);
@@ -188,32 +205,19 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
       if (savedPartner) setActivePartnerState(JSON.parse(savedPartner));
 
       const savedPayments = localStorage.getItem('aashus_app_payments');
-      if (savedPayments) {
-        const parsed = JSON.parse(savedPayments);
-        const clean = parsed.filter((p: any) => !p.id.startsWith('pay-1') && !p.id.startsWith('pay-2') && !p.id.startsWith('pay-3') && !p.id.startsWith('pay-4'));
-        setPayments(clean);
-      }
+      if (savedPayments) setPayments(JSON.parse(savedPayments));
 
       const savedChits = localStorage.getItem('aashus_app_chits');
-      if (savedChits) {
-        const parsed = JSON.parse(savedChits);
-        const clean = parsed.filter((c: any) => !c.id.startsWith('chit-1') && !c.id.startsWith('chit-2'));
-        setChits(clean);
-      }
+      if (savedChits) setChits(JSON.parse(savedChits));
 
       const savedNotes = localStorage.getItem('aashus_app_notes');
-      if (savedNotes) {
-        const parsed = JSON.parse(savedNotes);
-        const clean = parsed.filter((n: any) => !n.id.startsWith('note-1') && !n.id.startsWith('note-2') && !n.id.startsWith('note-3'));
-        setNotes(clean);
-      }
+      if (savedNotes) setNotes(JSON.parse(savedNotes));
 
       const savedTasks = localStorage.getItem('aashus_app_tasks');
-      if (savedTasks) {
-        const parsed = JSON.parse(savedTasks);
-        const clean = parsed.filter((t: any) => !t.id.startsWith('task-1') && !t.id.startsWith('task-2') && !t.id.startsWith('task-3'));
-        setTasks(clean);
-      }
+      if (savedTasks) setTasks(JSON.parse(savedTasks));
+
+      const savedReminders = localStorage.getItem('aashus_app_photo_reminders');
+      if (savedReminders) setPhotoReminders(JSON.parse(savedReminders));
     } catch (e) {
       console.warn('LocalStorage load:', e);
     }
@@ -227,10 +231,11 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
       localStorage.setItem('aashus_app_chits', JSON.stringify(chits));
       localStorage.setItem('aashus_app_notes', JSON.stringify(notes));
       localStorage.setItem('aashus_app_tasks', JSON.stringify(tasks));
+      localStorage.setItem('aashus_app_photo_reminders', JSON.stringify(photoReminders));
     } catch (e) {
       console.warn('LocalStorage save:', e);
     }
-  }, [payments, chits, notes, tasks]);
+  }, [payments, chits, notes, tasks, photoReminders]);
 
   // Global Keyboard Shortcuts (Ctrl+K for search)
   useEffect(() => {
@@ -397,8 +402,25 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
           type: 'task_due',
           section: 'tasks',
           relatedRecordId: t.id,
-          title: `📋 Task Due Today: ${t.title}`,
-          message: `Priority: ${t.priority} • Assigned: ${t.assignedTo} ${t.dueTime ? `(${t.dueTime})` : ''}`,
+          title: `📋 Task Due: ${t.title}`,
+          message: `Priority: ${t.priority} • Assigned: ${t.assignedTo}`,
+          read: false,
+          createdAt: new Date().toISOString()
+        });
+      }
+    });
+
+    // Photo Reminders Due
+    photoReminders.forEach(pr => {
+      if (pr.status === 'Completed') return;
+      if (pr.reminderDate <= todayStr) {
+        generated.push({
+          id: `notif-pr-${pr.id}`,
+          type: 'photo_reminder',
+          section: 'tasks',
+          relatedRecordId: pr.id,
+          title: `📸 Document Reminder: ${pr.title}`,
+          message: `${pr.amount ? `₹${pr.amount.toLocaleString('en-IN')} • ` : ''}Due: ${pr.reminderDate}`,
           read: false,
           createdAt: new Date().toISOString()
         });
@@ -406,7 +428,7 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
     });
 
     setNotifications(generated);
-  }, [payments, tasks]);
+  }, [payments, tasks, photoReminders]);
 
   // Dashboard Metrics Calculation
   const metrics = useMemo(() => {
@@ -461,6 +483,10 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
       t.status !== 'Completed' && t.status !== 'Cancelled' && t.dueDate <= todayStr
     ).length;
 
+    const pendingPhotoRemindersTodayCount = photoReminders.filter(pr =>
+      pr.status !== 'Completed' && pr.reminderDate <= todayStr
+    ).length;
+
     const activeChits = chits.filter(c => c.status === 'Active' && !c.archived);
     const activeChitsTotal = activeChits.reduce((sum, c) => sum + c.amount, 0);
 
@@ -476,10 +502,11 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
       dueTodayCount,
       dueNext3DaysCount,
       pendingTasksTodayCount,
+      pendingPhotoRemindersTodayCount,
       activeChitsCount: activeChits.length,
       activeChitsTotal,
     };
-  }, [payments, tasks, chits]);
+  }, [payments, tasks, chits, photoReminders]);
 
   // Notifications Helpers
   const markNotificationRead = (id: string) => {
@@ -495,6 +522,10 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
   const openQuickAdd = (tab?: 'payment_pay' | 'payment_collect' | 'chit' | 'note' | 'task') => {
     if (tab) setQuickAddDefaultTab(tab);
     setIsQuickAddOpen(true);
+  };
+
+  const openPhotoReminderModal = () => {
+    setIsPhotoReminderModalOpen(true);
   };
 
   const openRecordPaymentModal = (payment: PaymentItem) => {
@@ -860,6 +891,67 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
     await updateTask(id, { dueDate: tomorrowStr, status: 'Pending' });
   };
 
+  // ================= PHOTO REMINDERS (SNAP & REMIND) CRUD =================
+  const addPhotoReminder = async (itemData: Omit<PhotoReminderItem, 'id' | 'createdAt' | 'updatedAt'>): Promise<PhotoReminderItem> => {
+    const newId = `prem-${Date.now()}`;
+    const newReminder: PhotoReminderItem = {
+      ...itemData,
+      id: newId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    setPhotoReminders(prev => [newReminder, ...prev]);
+
+    // Also auto-create a linked Task so it appears in standard task checklists seamlessly
+    try {
+      await addTask({
+        title: `📸 ${newReminder.title} ${newReminder.amount ? `(₹${newReminder.amount.toLocaleString('en-IN')})` : ''}`,
+        description: `Photo reminder (${newReminder.preset.replace('_', ' ')}) ${newReminder.notes || ''}`,
+        dueDate: newReminder.reminderDate,
+        priority: 'High',
+        assignedTo: activePartner.name,
+        category: 'Document Reminder',
+        status: 'Pending',
+        imageUrl: newReminder.imageUrl,
+        amount: newReminder.amount,
+        createdBy: activePartner.name
+      });
+    } catch (tErr) {
+      console.warn('Auto task sync:', tErr);
+    }
+
+    return newReminder;
+  };
+
+  const updatePhotoReminder = async (id: string, updates: Partial<PhotoReminderItem>) => {
+    setPhotoReminders(prev => prev.map(r => r.id === id ? {
+      ...r,
+      ...updates,
+      updatedAt: new Date().toISOString()
+    } : r));
+  };
+
+  const deletePhotoReminder = async (id: string) => {
+    setPhotoReminders(prev => prev.filter(r => r.id !== id));
+  };
+
+  const togglePhotoReminderComplete = async (id: string) => {
+    const target = photoReminders.find(r => r.id === id);
+    if (!target) return;
+    const newStatus = target.status === 'Completed' ? 'Pending' : 'Completed';
+    await updatePhotoReminder(id, { status: newStatus });
+  };
+
+  const snoozePhotoReminder = async (id: string, days = 1) => {
+    const target = photoReminders.find(r => r.id === id);
+    if (!target) return;
+    const currentDueDate = new Date(target.reminderDate);
+    currentDueDate.setDate(currentDueDate.getDate() + days);
+    const newDateStr = currentDueDate.toISOString().split('T')[0];
+    await updatePhotoReminder(id, { reminderDate: newDateStr, status: 'Pending' });
+  };
+
   return (
     <PartnerStoreContext.Provider
       value={{
@@ -891,6 +983,12 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
         deleteTask,
         toggleTaskComplete,
         moveTaskToTomorrow,
+        photoReminders,
+        addPhotoReminder,
+        updatePhotoReminder,
+        deletePhotoReminder,
+        togglePhotoReminderComplete,
+        snoozePhotoReminder,
         notifications,
         markNotificationRead,
         markAllNotificationsRead,
@@ -899,6 +997,9 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
         setIsQuickAddOpen,
         quickAddDefaultTab,
         openQuickAdd,
+        isPhotoReminderModalOpen,
+        setIsPhotoReminderModalOpen,
+        openPhotoReminderModal,
         isGlobalSearchOpen,
         setIsGlobalSearchOpen,
         isRecordPaymentOpen,

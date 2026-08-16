@@ -22,10 +22,12 @@ import { NavigationSection } from '@/types';
 // Modals & Pages
 import LoginPage from '@/components/auth/LoginPage';
 import QuickAddModal from '@/components/modals/QuickAddModal';
+import PhotoReminderModal from '@/components/modals/PhotoReminderModal';
 import GlobalSearchModal from '@/components/modals/GlobalSearchModal';
 import RecordPaymentModal from '@/components/modals/RecordPaymentModal';
 import NotificationsDrawer from '@/components/notifications/NotificationsDrawer';
 import PartnerAuthModal from '@/components/auth/PartnerAuthModal';
+import { Camera } from 'lucide-react';
 
 // Views
 import MainDashboard from '@/components/dashboard/MainDashboard';
@@ -45,6 +47,9 @@ export default function AppShell() {
     setActivePartner,
     partners, 
     openQuickAdd, 
+    isPhotoReminderModalOpen,
+    setIsPhotoReminderModalOpen,
+    openPhotoReminderModal,
     setIsGlobalSearchOpen,
     setIsNotificationsOpen,
     unreadNotificationsCount 
@@ -87,14 +92,24 @@ export default function AppShell() {
             </div>
           </div>
 
-          {/* Quick Add Button */}
-          <button
-            onClick={() => openQuickAdd()}
-            className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition-all shadow-sm flex items-center justify-center gap-2 group cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-amber-400 stroke-[2.5] group-hover:rotate-90 transition-transform" />
-            <span>+ Add Record</span>
-          </button>
+          {/* Action Buttons */}
+          <div className="space-y-2">
+            <button
+              onClick={() => openPhotoReminderModal()}
+              className="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+            >
+              <Camera className="w-4 h-4 stroke-[2.5]" />
+              <span>📸 Snap Reminder</span>
+            </button>
+
+            <button
+              onClick={() => openQuickAdd()}
+              className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition-all shadow-sm flex items-center justify-center gap-2 group cursor-pointer"
+            >
+              <Plus className="w-4 h-4 text-amber-400 stroke-[2.5] group-hover:rotate-90 transition-transform" />
+              <span>+ Add Record</span>
+            </button>
+          </div>
 
           {/* Navigation Links */}
           <nav className="space-y-1">
@@ -210,6 +225,16 @@ export default function AppShell() {
 
           {/* Right Header Controls */}
           <div className="flex items-center gap-2.5">
+            {/* Snap reminder button */}
+            <button
+              onClick={() => openPhotoReminderModal()}
+              className="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+              title="Snap & Set Reminder"
+            >
+              <Camera className="w-4 h-4" />
+              <span className="hidden sm:inline">Snap</span>
+            </button>
+
             {/* Universal Search trigger */}
             <button
               onClick={() => setIsGlobalSearchOpen(true)}
@@ -294,6 +319,7 @@ export default function AppShell() {
 
       {/* Global Modals */}
       <QuickAddModal />
+      <PhotoReminderModal isOpen={isPhotoReminderModalOpen} onClose={() => setIsPhotoReminderModalOpen(false)} />
       <GlobalSearchModal />
       <RecordPaymentModal />
       <NotificationsDrawer />
