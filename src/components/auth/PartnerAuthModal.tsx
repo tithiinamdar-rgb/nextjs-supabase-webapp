@@ -8,7 +8,7 @@ import { PartnerProfile } from '@/types';
 interface PartnerAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess: (partner: PartnerProfile) => void;
+  onLoginSuccess?: (partner: PartnerProfile) => void;
 }
 
 export default function PartnerAuthModal({ isOpen, onClose, onLoginSuccess }: PartnerAuthModalProps) {
@@ -31,7 +31,7 @@ export default function PartnerAuthModal({ isOpen, onClose, onLoginSuccess }: Pa
 
     // Secure local session validation
     setActivePartner(target);
-    onLoginSuccess(target);
+    if (onLoginSuccess) onLoginSuccess(target);
     onClose();
   };
 

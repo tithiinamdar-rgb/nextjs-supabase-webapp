@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Partner Desk - Real Estate Business Management",
+  title: "Aashu's App - Real Estate Business Desk",
   description: "Private executive business desk for real estate partners. Cashflows, chits, property notes & daily tasks.",
 };
 

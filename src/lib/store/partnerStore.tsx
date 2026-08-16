@@ -16,29 +16,33 @@ import { createClient } from '@/lib/supabase/client';
 export const DEFAULT_PARTNERS: PartnerProfile[] = [
   {
     id: 'partner1',
-    name: 'Partner 1',
-    email: 'partner1@partnerdesk.local',
-    initials: 'P1',
-    role: 'Partner 1',
+    name: 'Aashu Sharma',
+    email: 'tithiinamdar@gmail.com',
+    initials: 'AS',
+    role: 'Managing Partner',
     phone: '',
   },
   {
     id: 'partner2',
-    name: 'Partner 2',
+    name: 'Business Partner',
     email: 'partner2@partnerdesk.local',
-    initials: 'P2',
-    role: 'Partner 2',
+    initials: 'BP',
+    role: 'Associate Partner',
     phone: '',
   }
 ];
 
-// Clean empty state - No fake or sample data
+// Clean empty initial state - No fake data
 const INITIAL_PAYMENTS: PaymentItem[] = [];
 const INITIAL_CHITS: ChitItem[] = [];
 const INITIAL_NOTES: NoteItem[] = [];
 const INITIAL_TASKS: TaskItem[] = [];
 
 interface PartnerStoreContextType {
+  isAuthenticated: boolean;
+  setIsAuthenticated: (auth: boolean) => void;
+  logout: () => void;
+
   activePartner: PartnerProfile;
   setActivePartner: (partner: PartnerProfile) => void;
   partners: PartnerProfile[];
@@ -121,6 +125,7 @@ interface PartnerStoreContextType {
 const PartnerStoreContext = createContext<PartnerStoreContextType | null>(null);
 
 export function PartnerStoreProvider({ children }: { children: React.ReactNode }) {
+  const [isAuthenticated, setIsAuthenticatedState] = useState<boolean>(false);
   const [activePartner, setActivePartnerState] = useState<PartnerProfile>(DEFAULT_PARTNERS[0]);
   const [currentSection, setCurrentSection] = useState<NavigationSection>('dashboard');
   
@@ -142,45 +147,68 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
 
   const supabase = useMemo(() => createClient(), []);
 
+  // Auth persistence
+  const setIsAuthenticated = useCallback((auth: boolean) => {
+    setIsAuthenticatedState(auth);
+    if (typeof window !== 'undefined') {
+      if (auth) {
+        localStorage.setItem('aashus_app_auth', 'true');
+      } else {
+        localStorage.removeItem('aashus_app_auth');
+      }
+    }
+  }, []);
+
+  const logout = useCallback(() => {
+    setIsAuthenticatedState(false);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('aashus_app_auth');
+    }
+  }, []);
+
   // Set active partner with persistence
   const setActivePartner = useCallback((partner: PartnerProfile) => {
     setActivePartnerState(partner);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('partnerdesk_active_partner', JSON.stringify(partner));
+      localStorage.setItem('aashus_app_active_partner', JSON.stringify(partner));
     }
   }, []);
 
-  // Load cache from localStorage on mount (cleaning any previous demo data)
+  // Load cache from localStorage on mount
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     try {
-      const savedPartner = localStorage.getItem('partnerdesk_active_partner');
+      const savedAuth = localStorage.getItem('aashus_app_auth');
+      if (savedAuth === 'true') {
+        setIsAuthenticatedState(true);
+      }
+
+      const savedPartner = localStorage.getItem('aashus_app_active_partner');
       if (savedPartner) setActivePartnerState(JSON.parse(savedPartner));
 
-      const savedPayments = localStorage.getItem('partnerdesk_payments');
+      const savedPayments = localStorage.getItem('aashus_app_payments');
       if (savedPayments) {
         const parsed = JSON.parse(savedPayments);
-        // Filter out any legacy mock data
         const clean = parsed.filter((p: any) => !p.id.startsWith('pay-1') && !p.id.startsWith('pay-2') && !p.id.startsWith('pay-3') && !p.id.startsWith('pay-4'));
         setPayments(clean);
       }
 
-      const savedChits = localStorage.getItem('partnerdesk_chits');
+      const savedChits = localStorage.getItem('aashus_app_chits');
       if (savedChits) {
         const parsed = JSON.parse(savedChits);
         const clean = parsed.filter((c: any) => !c.id.startsWith('chit-1') && !c.id.startsWith('chit-2'));
         setChits(clean);
       }
 
-      const savedNotes = localStorage.getItem('partnerdesk_notes');
+      const savedNotes = localStorage.getItem('aashus_app_notes');
       if (savedNotes) {
         const parsed = JSON.parse(savedNotes);
         const clean = parsed.filter((n: any) => !n.id.startsWith('note-1') && !n.id.startsWith('note-2') && !n.id.startsWith('note-3'));
         setNotes(clean);
       }
 
-      const savedTasks = localStorage.getItem('partnerdesk_tasks');
+      const savedTasks = localStorage.getItem('aashus_app_tasks');
       if (savedTasks) {
         const parsed = JSON.parse(savedTasks);
         const clean = parsed.filter((t: any) => !t.id.startsWith('task-1') && !t.id.startsWith('task-2') && !t.id.startsWith('task-3'));
@@ -195,10 +223,10 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem('partnerdesk_payments', JSON.stringify(payments));
-      localStorage.setItem('partnerdesk_chits', JSON.stringify(chits));
-      localStorage.setItem('partnerdesk_notes', JSON.stringify(notes));
-      localStorage.setItem('partnerdesk_tasks', JSON.stringify(tasks));
+      localStorage.setItem('aashus_app_payments', JSON.stringify(payments));
+      localStorage.setItem('aashus_app_chits', JSON.stringify(chits));
+      localStorage.setItem('aashus_app_notes', JSON.stringify(notes));
+      localStorage.setItem('aashus_app_tasks', JSON.stringify(tasks));
     } catch (e) {
       console.warn('LocalStorage save:', e);
     }
@@ -464,13 +492,11 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
 
   const unreadNotificationsCount = notifications.filter(n => !n.read).length;
 
-  // Open Quick Add helper
   const openQuickAdd = (tab?: 'payment_pay' | 'payment_collect' | 'chit' | 'note' | 'task') => {
     if (tab) setQuickAddDefaultTab(tab);
     setIsQuickAddOpen(true);
   };
 
-  // Open Record Payment Modal
   const openRecordPaymentModal = (payment: PaymentItem) => {
     setRecordPaymentTarget(payment);
     setIsRecordPaymentOpen(true);
@@ -505,7 +531,6 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
 
     setPayments(prev => [newPayment, ...prev]);
 
-    // Async write to Supabase if connected
     if (supabase) {
       try {
         await supabase.from('payments').insert([{
@@ -838,6 +863,9 @@ export function PartnerStoreProvider({ children }: { children: React.ReactNode }
   return (
     <PartnerStoreContext.Provider
       value={{
+        isAuthenticated,
+        setIsAuthenticated,
+        logout,
         activePartner,
         setActivePartner,
         partners: DEFAULT_PARTNERS,

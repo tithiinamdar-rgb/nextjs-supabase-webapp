@@ -6,7 +6,7 @@ export interface PartnerProfile {
   email: string;
   avatarUrl?: string;
   initials: string;
-  role: 'Partner 1' | 'Partner 2';
+  role: 'Partner 1' | 'Partner 2' | 'Managing Partner' | 'Associate Partner' | string;
   phone?: string;
 }
 
